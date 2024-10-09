@@ -1,0 +1,10 @@
+services:
+  postgres:
+    image: 'postgres:16'
+    container_name: postgres
+    environment:
+      - 'POSTGRES_DB=audio-review'
+      - 'POSTGRES_PASSWORD=secret'
+      - 'POSTGRES_USER=myuser'
+    ports:
+      - '5432'
