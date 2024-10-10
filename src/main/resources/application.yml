@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: audio-review
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/audio_review
+    username: ${DB_LOGIN:db_admin}
+    password: ${DB_PASSWORD:db_password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  # Spring Security Configuration
+  security:
+    user:
+      name: ${SPRING_ADMIN:spring_admin}
+      password: ${SPRING_PASS:spring_password}
+
+  # File upload configuration
+  servlet:
+    multipart:
+      max-file-size: 10MB
+
+  # Logging Configuration
+logging:
+  level:
+    org:
+      springframework: INFO
+
+  # Server Configuration
+server:
+  port: 8080
+
+  # OpenAPI Configuration
+springdoc:
+    api-docs:
+      path: /v3/api-docs
+    swagger-ui:
+      path: /swagger-ui.html
+
+# File upload directory
+file:
+  upload-dir: uploads
+
+  # JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:YourSuperSecretKeyForJWTGenerationThatIsAtLeast32CharactersLong}
+  expirationMs: 86400000
+

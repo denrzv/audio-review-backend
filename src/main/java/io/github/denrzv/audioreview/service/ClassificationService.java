@@ -12,18 +12,20 @@ import io.github.denrzv.audioreview.repository.CategoryRepository;
 import io.github.denrzv.audioreview.repository.ClassificationRepository;
 import io.github.denrzv.audioreview.repository.UserRepository;
 import lombok.AllArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Random;
-import java.util.stream.Collectors;
+import java.util.ConcurrentModificationException;
+import java.util.Optional;
 
 @Service
 @AllArgsConstructor
@@ -36,57 +38,88 @@ public class ClassificationService {
     private CategoryRepository categoryRepository;
 
     private UserRepository userRepository;
-    private final Path fileStorageLocation = Paths.get("uploads");
+    private static final Logger logger = LoggerFactory.getLogger(ClassificationService.class);
 
-    public AudioFileResponse getRandomUnclassifiedFile() {
-        List<AudioFile> unclassifiedFiles = audioFileRepository.findAll().stream()
-                .filter(file -> file.getCurrentCategory().getName().equalsIgnoreCase("Unclassified"))
-                .toList();
 
-        if (unclassifiedFiles.isEmpty()) {
-            throw new RuntimeException("No unclassified files available.");
+    @Transactional
+    public AudioFileResponse getRandomUnclassifiedFile(Long userId) {
+
+
+        LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(15);
+
+        // Attempt to find an unclassified file, prioritizing those locked by the current user
+        AudioFile file = audioFileRepository.findRandomUnclassifiedUnlockedFile(userId, expirationTime)
+                .orElseThrow(() -> new IllegalStateException("No unclassified files available."));
+
+        // Lock the file if it’s not already locked by the current user
+        if (!userId.equals(file.getLockedBy())) {
+            file = audioFileRepository.findByIdWithLock(file.getId())
+                    .orElseThrow(() -> new RuntimeException("File not found for locking"));
+
+            file.setLockedBy(userId);
+            file.setLockedAt(LocalDateTime.now());
+            audioFileRepository.save(file);
         }
 
-        AudioFile file = unclassifiedFiles.get(new Random().nextInt(unclassifiedFiles.size()));
-
-        // Construct full URL for filePath
         String filePath = String.format("http://localhost:8080/admin/audio/files/%s", file.getFilename());
 
-        return new AudioFileResponse(file.getId(), file.getFilename(),
-                file.getInitialCategory().getName(), file.getUploadedAt(), file.getUploadedBy().getUsername(),
-                file.getCurrentCategory() == null ? "Unclassified" : file.getCurrentCategory().getName(),
-                filePath);
+        return new AudioFileResponse(
+                file.getId(),
+                file.getFilename(),
+                file.getInitialCategory().getName(),
+                file.getUploadedAt(),
+                file.getUploadedBy().getUsername(),
+                file.getCurrentCategory().getName(),
+                filePath
+        );
     }
 
+    @Transactional
     public AudioFileResponse classifyFile(Long fileId, ClassificationRequest request) {
-        AudioFile file = audioFileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("File not found"));
+        try {
+            AudioFile file = audioFileRepository.findById(fileId)
+                    .orElseThrow(() -> new RuntimeException("File not found"));
 
-        Category newCategory = categoryRepository.findByNameEqualsIgnoreCase(request.getCategory())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        // Get the current logged-in user
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+            Category newCategory = categoryRepository.findByNameEqualsIgnoreCase(request.getCategory())
+                    .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        // Save classification history
-        Classification classification = Classification.builder()
-                .audioFile(file)
-                .user(user)
-                .previousCategory(file.getCurrentCategory())
-                .newCategory(newCategory)
-                .classifiedAt(LocalDateTime.now())
-                .build();
+            // Get the current logged-in user
+            String username = SecurityContextHolder.getContext().getAuthentication().getName();
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
-        classificationRepository.save(classification);
+            Classification classification = Classification.builder()
+                    .audioFile(file)
+                    .user(user)
+                    .previousCategory(file.getCurrentCategory())
+                    .newCategory(newCategory)
+                    .classifiedAt(LocalDateTime.now())
+                    .build();
 
-        file.setCurrentCategory(newCategory);
-        audioFileRepository.save(file);
+            classificationRepository.save(classification);
 
-        return new AudioFileResponse(file.getId(), file.getFilename(),
-                file.getInitialCategory().getName(), file.getUploadedAt(), file.getUploadedBy().getUsername(),
-                newCategory.getName(), file.getFilepath());
+            file.setCurrentCategory(newCategory);
+            audioFileRepository.save(file);
+
+            unlockFile(fileId);
+
+            return new AudioFileResponse(file.getId(), file.getFilename(),
+                    file.getInitialCategory().getName(), file.getUploadedAt(), file.getUploadedBy().getUsername(),
+                    newCategory.getName(), file.getFilepath());
+        } catch (OptimisticLockingFailureException ex) {
+            logger.error("This file was modified by another user. Please try again." + request);
+            throw new ConcurrentModificationException("This file was modified by another user. Please try again.");
+        }
+    }
+
+    public void unlockFile(Long fileId) {
+        Optional<AudioFile> fileOpt = audioFileRepository.findById(fileId);
+        fileOpt.ifPresent(file -> {
+            file.setLockedBy(null);
+            file.setLockedAt(null);
+            audioFileRepository.save(file);
+        });
     }
 
     public Page<ClassificationResponse> getClassificationHistoryForUser(String username, int page, int pageSize) {
@@ -104,3 +137,5 @@ public class ClassificationService {
                 classification.getClassifiedAt()));
     }
 }
+
+//TODO file path, user lock properties

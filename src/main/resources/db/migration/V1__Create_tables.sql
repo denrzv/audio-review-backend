@@ -32,9 +32,13 @@ CREATE TABLE IF NOT EXISTS audio_files (
                                            current_category_id BIGINT,
                                            uploaded_by BIGINT NOT NULL,
                                            uploaded_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
+                                           version BIGINT DEFAULT 0,
+                                           locked_by BIGINT,
+                                           locked_at TIMESTAMP,
                                            FOREIGN KEY (initial_category_id) REFERENCES categories(id) ON DELETE RESTRICT,
                                            FOREIGN KEY (current_category_id) REFERENCES categories(id) ON DELETE SET NULL,
-                                           FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE
+                                           FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE,
+                                           FOREIGN KEY (locked_by) REFERENCES users(id) ON DELETE SET NULL -- Optional: set null on user deletion
 );
 
 -- 4. Create the 'classifications' table

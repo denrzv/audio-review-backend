@@ -32,7 +32,6 @@ public class AudioFileService {
 
     @Transactional
     public AudioFileResponse uploadFile(MultipartFile file) {
-        // Get the current logged-in user
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -43,14 +42,11 @@ public class AudioFileService {
         Category initialCategory = categoryRepository.findByNameEqualsIgnoreCase(categoryName)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        // Retrieve "Unclassified" category from the database
         Category unclassifiedCategory = categoryRepository.findByNameEqualsIgnoreCase("Unclassified")
                 .orElseThrow(() -> new RuntimeException("Unclassified category not found"));
 
-        // Store the file in the filesystem
         String filePath = fileStorageService.storeFile(file);
 
-        // Save file metadata in the database with the retrieved "Unclassified" category
         AudioFile audioFile = AudioFile.builder()
                 .filename(file.getOriginalFilename())
                 .filepath(filePath)

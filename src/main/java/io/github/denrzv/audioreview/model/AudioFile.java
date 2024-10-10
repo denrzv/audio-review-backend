@@ -38,4 +38,13 @@ public class AudioFile {
 
     @Column(nullable = false)
     private LocalDateTime uploadedAt;
+
+    @Column(name = "locked_by")
+    private Long lockedBy;
+
+    @Column(name = "locked_at")
+    private LocalDateTime lockedAt;
+
+    @Version
+    private Long version;
 }

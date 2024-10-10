@@ -3,6 +3,7 @@ package io.github.denrzv.audioreview.controller;
 import io.github.denrzv.audioreview.dto.AudioFileResponse;
 import io.github.denrzv.audioreview.model.AudioFile;
 import io.github.denrzv.audioreview.service.AudioFileService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,11 +11,15 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,7 +38,7 @@ public class AudioFileController {
     /**
      * Serve an audio file by filename, accessible to both USER and ADMIN roles.
      */
-    @GetMapping("/files/{filename:.+}")
+    /*@GetMapping("/files/{filename:.+}")
     public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
         try {
             AudioFile audioFile = audioFileService.getFileByFilename(filename);
@@ -45,21 +50,72 @@ public class AudioFileController {
             Resource resource = new UrlResource(filePath.toUri());
 
             if (!resource.exists() || !resource.isReadable()) {
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .header(HttpHeaders.CONTENT_TYPE, "text/plain")
+                        .body(null);
             }
 
             // Determine MIME type
             String mimeType = Files.probeContentType(filePath);
+            if (mimeType == null) {
+                mimeType = "application/octet-stream"; // fallback to binary content
+            }
 
+            // Set content disposition to force download behavior
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_TYPE, mimeType != null ? mimeType : "application/octet-stream")
+                    .contentType(MediaType.parseMediaType(mimeType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
                     .body(resource);
+
         } catch (Exception e) {
             logger.error("Error serving file '{}': {}", filename, e.getMessage(), e);
-
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .header(HttpHeaders.CONTENT_TYPE, "text/plain")
                     .body(null);
+        }
+    }*/
+
+    @GetMapping("/files/{filename:.+}")
+    public void serveFile(@PathVariable String filename, HttpServletResponse response) {
+        try {
+            AudioFile audioFile = audioFileService.getFileByFilename(filename);
+            if (audioFile == null) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+
+            Path filePath = fileStorageLocation.resolve(audioFile.getFilepath()).normalize();
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists() || !resource.isReadable()) {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+
+            // Set MIME type and headers
+            String mimeType = Files.probeContentType(filePath);
+            response.setContentType(mimeType != null ? mimeType : "application/octet-stream");
+            response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"");
+
+            // Write file to response stream
+            try (InputStream inputStream = resource.getInputStream();
+                 OutputStream outputStream = response.getOutputStream()) {
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                }
+            } catch (IOException e) {
+                // Handle client disconnects
+                if (e.getMessage().contains("Broken pipe")) {
+                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                    return;
+                }
+                throw e;  // rethrow other IO exceptions
+            }
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            logger.error("Error serving file '{}': {}", filename, e.getMessage(), e);
         }
     }
 
@@ -106,10 +162,7 @@ public class AudioFileController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * Endpoint to update properties of an audio file.
-     * Accessible only by ADMIN role.
-     */
+
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AudioFileResponse> updateFile(@PathVariable Long id, @RequestBody AudioFileResponse updatedFile) {
