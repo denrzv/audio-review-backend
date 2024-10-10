@@ -2,6 +2,7 @@ package io.github.denrzv.audioreview.service;
 
 import io.github.denrzv.audioreview.dto.AudioFileResponse;
 import io.github.denrzv.audioreview.dto.ClassificationRequest;
+import io.github.denrzv.audioreview.dto.ClassificationResponse;
 import io.github.denrzv.audioreview.model.AudioFile;
 import io.github.denrzv.audioreview.model.Category;
 import io.github.denrzv.audioreview.model.Classification;
@@ -11,12 +12,18 @@ import io.github.denrzv.audioreview.repository.CategoryRepository;
 import io.github.denrzv.audioreview.repository.ClassificationRepository;
 import io.github.denrzv.audioreview.repository.UserRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
@@ -29,6 +36,7 @@ public class ClassificationService {
     private CategoryRepository categoryRepository;
 
     private UserRepository userRepository;
+    private final Path fileStorageLocation = Paths.get("uploads");
 
     public AudioFileResponse getRandomUnclassifiedFile() {
         List<AudioFile> unclassifiedFiles = audioFileRepository.findAll().stream()
@@ -79,5 +87,20 @@ public class ClassificationService {
         return new AudioFileResponse(file.getId(), file.getFilename(),
                 file.getInitialCategory().getName(), file.getUploadedAt(), file.getUploadedBy().getUsername(),
                 newCategory.getName(), file.getFilepath());
+    }
+
+    public Page<ClassificationResponse> getClassificationHistoryForUser(String username, int page, int pageSize) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Pageable pageable = PageRequest.of(page, pageSize);
+        Page<Classification> classifications = classificationRepository.findByUserOrderByClassifiedAtDesc(user, pageable);
+
+        return classifications.map(classification -> new ClassificationResponse(
+                classification.getAudioFile().getId(),
+                classification.getAudioFile().getFilename(),
+                String.format("http://localhost:8080/admin/audio/files/%s", classification.getAudioFile().getFilename()),
+                classification.getNewCategory().getName(),
+                classification.getClassifiedAt()));
     }
 }

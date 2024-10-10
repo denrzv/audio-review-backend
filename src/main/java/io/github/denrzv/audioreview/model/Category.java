@@ -3,6 +3,7 @@ package io.github.denrzv.audioreview.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+@SuppressWarnings("JpaDataSourceORMInspection")
 @Entity
 @Table(name = "categories")
 @Data
