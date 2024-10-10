@@ -7,7 +7,6 @@ import io.github.denrzv.audioreview.model.User;
 import io.github.denrzv.audioreview.repository.AudioFileRepository;
 import io.github.denrzv.audioreview.repository.CategoryRepository;
 import io.github.denrzv.audioreview.repository.UserRepository;
-import jakarta.transaction.TransactionScoped;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -78,27 +77,32 @@ public class AudioFileService {
                 .orElseThrow(() -> new RuntimeException("File not found with filename: " + filename));
     }
 
-    public Map<String, Object> getAllFiles(int page, int pageSize) {
+    public Map<String, Object> getAllFiles(int page, int pageSize, String filename) {
         PageRequest pageable = PageRequest.of(page, pageSize);
-        Page<AudioFile> pagedFiles = audioFileRepository.findAll(pageable);
+        Page<AudioFile> pagedFiles;
 
-        List<AudioFileResponse> files = new ArrayList<>();
-        for (AudioFile file : pagedFiles.getContent()) {
-            AudioFileResponse audioFileResponse = new AudioFileResponse(
-                    file.getId(),
-                    file.getFilename(),
-                    file.getInitialCategory().getName(),
-                    file.getUploadedAt(),
-                    file.getUploadedBy().getUsername(),
-                    file.getCurrentCategory() != null ? file.getCurrentCategory().getName() : "Unclassified",
-                    file.getFilepath()
-            );
-            files.add(audioFileResponse);
+        if (filename != null && !filename.isEmpty()) {
+            pagedFiles = audioFileRepository.findByFilenameContainingIgnoreCase(filename, pageable);
+        } else {
+            pagedFiles = audioFileRepository.findAll(pageable);
         }
+
+        List<AudioFileResponse> files = pagedFiles.getContent().stream().map(file ->
+                new AudioFileResponse(
+                        file.getId(),
+                        file.getFilename(),
+                        file.getInitialCategory().getName(),
+                        file.getUploadedAt(),
+                        file.getUploadedBy().getUsername(),
+                        file.getCurrentCategory().getName(),
+                        file.getFilepath()
+                )
+        ).collect(Collectors.toList());
 
         Map<String, Object> response = new HashMap<>();
         response.put("data", files);
-        response.put("total", pagedFiles.getTotalElements()); // Total count of files
+        response.put("total", pagedFiles.getTotalElements());
+
         return response;
     }
 

@@ -93,8 +93,9 @@ public class AudioFileController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> getAllFiles(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int pageSize) {
-        Map<String, Object> response = audioFileService.getAllFiles(page, pageSize);
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String filename) {
+        Map<String, Object> response = audioFileService.getAllFiles(page, pageSize, filename);
         return ResponseEntity.ok(response);
     }
 

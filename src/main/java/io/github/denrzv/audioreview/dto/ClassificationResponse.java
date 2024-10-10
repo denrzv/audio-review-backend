@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ClassificationResponse {
-    private Long fileId;
+    private Long id;
     private String filename;
     private String filePath;
     private String currentCategory;

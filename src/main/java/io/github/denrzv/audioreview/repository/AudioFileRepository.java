@@ -1,6 +1,8 @@
 package io.github.denrzv.audioreview.repository;
 
 import io.github.denrzv.audioreview.model.AudioFile;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -14,4 +16,6 @@ public interface AudioFileRepository extends JpaRepository<AudioFile, Long> {
     boolean existsByCurrentCategoryId(Long id);
 
     Optional<AudioFile> findByFilename(String filename);
+
+    Page<AudioFile> findByFilenameContainingIgnoreCase(String filename, Pageable pageable);
 }
