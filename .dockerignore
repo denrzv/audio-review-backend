@@ -1,0 +1,51 @@
+# Ignore Maven and Gradle build directories
+target/
+build/
+
+# Ignore IntelliJ IDEA and Eclipse project files
+*.iml
+*.iws
+.idea/
+*.ipr
+.project
+
+# Ignore Maven and Gradle local settings
+.mvn/
+.gradle/
+
+# Ignore local environment files and settings
+.env
+*.env
+*.properties
+
+# Ignore version control directories and files
+.git/
+.gitignore
+.gitattributes
+
+# Ignore log files and temporary files
+*.log
+*.tmp
+*.bak
+
+# Ignore Docker-specific files (only include Dockerfile if necessary)
+.dockerignore
+docker-compose.yml
+
+# Ignore OS and IDE-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore README, documentation, and markdown files (optional)
+*.md
+docs/
+
+# Ignore files generated during the build process
+*.class
+*.jar
+*.war
+*.ear
+
+# Ignore other files in the root directory not required for Docker build
+LICENSE
+CHANGELOG
