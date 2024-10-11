@@ -58,6 +58,12 @@ public class WebSecurityConfig {
                         // Allow both USER and ADMIN roles to access the stats endpoint
                         .requestMatchers("/admin/audio/stats").hasAnyRole("USER", "ADMIN")
 
+                        // Allow actuator health and info endpoints to be accessed without authentication
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+
+                        // General actuator access for admin
+                        .requestMatchers("/actuator/**").hasAnyRole("ADMIN")
+
                         // Other /admin/** endpoints restricted to ADMIN role
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/user/**").hasRole("USER")

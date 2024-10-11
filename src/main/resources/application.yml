@@ -53,3 +53,18 @@ jwt:
   secret: ${JWT_SECRET:YourSuperSecretKeyForJWTGenerationThatIsAtLeast32CharactersLong}
   expirationMs: 86400000
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: always
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  server:
+    port: 8080
