@@ -5,8 +5,8 @@ spring:
   # Database Configuration
   datasource:
     url: jdbc:postgresql://localhost:5432/audio_review
-    username: ${DB_LOGIN:db_admin}
-    password: ${DB_PASSWORD:db_password}
+    username: db_admin
+    password: db_password
   jpa:
     hibernate:
       ddl-auto: validate
@@ -19,8 +19,8 @@ spring:
   # Spring Security Configuration
   security:
     user:
-      name: ${SPRING_ADMIN:spring_admin}
-      password: ${SPRING_PASS:spring_password}
+      name: spring_admin
+      password: spring_password
 
   # File upload configuration
   servlet:
