@@ -1,5 +1,6 @@
 package io.github.denrzv.audioreview.security;
 
+import io.github.denrzv.audioreview.config.AppConfig;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,6 +27,7 @@ public class WebSecurityConfig {
 
     private UserDetailsServiceImpl userDetailsService;
     private AuthTokenFilter authTokenFilter;
+    private AppConfig appConfig;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -78,7 +80,7 @@ public class WebSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3001"));
+        config.setAllowedOrigins(List.of(appConfig.getAllowedOrigin()));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         config.setExposedHeaders(List.of("Authorization"));

@@ -1,5 +1,6 @@
 package io.github.denrzv.audioreview.service;
 
+import io.github.denrzv.audioreview.config.AppConfig;
 import io.github.denrzv.audioreview.dto.AudioFileResponse;
 import io.github.denrzv.audioreview.dto.ClassificationRequest;
 import io.github.denrzv.audioreview.dto.ClassificationResponse;
@@ -38,14 +39,14 @@ public class ClassificationService {
     private CategoryRepository categoryRepository;
 
     private UserRepository userRepository;
+    private AppConfig appConfig;
     private static final Logger logger = LoggerFactory.getLogger(ClassificationService.class);
 
 
     @Transactional
     public AudioFileResponse getRandomUnclassifiedFile(Long userId) {
 
-
-        LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(15);
+        LocalDateTime expirationTime = LocalDateTime.now().minusMinutes(Long.parseLong(appConfig.getUserLockMinutes()));
 
         // Attempt to find an unclassified file, prioritizing those locked by the current user
         AudioFile file = audioFileRepository.findRandomUnclassifiedUnlockedFile(userId, expirationTime)
@@ -61,7 +62,7 @@ public class ClassificationService {
             audioFileRepository.save(file);
         }
 
-        String filePath = String.format("http://localhost:8080/admin/audio/files/%s", file.getFilename());
+        String filePath = String.format("%s/admin/audio/files/%s", appConfig.getFileServerUrl(), file.getFilename());
 
         return new AudioFileResponse(
                 file.getId(),
@@ -77,14 +78,14 @@ public class ClassificationService {
     @Transactional
     public AudioFileResponse classifyFile(Long fileId, ClassificationRequest request) {
         try {
-            AudioFile file = audioFileRepository.findById(fileId)
+            // Fetch and lock the file using a separate locking query
+            AudioFile file = audioFileRepository.findByIdWithLock(fileId)
                     .orElseThrow(() -> new RuntimeException("File not found"));
 
-
+            // Fetch the category without saving it directly to avoid cascade issues
             Category newCategory = categoryRepository.findByNameEqualsIgnoreCase(request.getCategory())
                     .orElseThrow(() -> new RuntimeException("Category not found"));
 
-            // Get the current logged-in user
             String username = SecurityContextHolder.getContext().getAuthentication().getName();
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
@@ -96,19 +97,22 @@ public class ClassificationService {
                     .newCategory(newCategory)
                     .classifiedAt(LocalDateTime.now())
                     .build();
-
             classificationRepository.save(classification);
 
             file.setCurrentCategory(newCategory);
             audioFileRepository.save(file);
 
+            // Unlock the file after classification
             unlockFile(fileId);
 
-            return new AudioFileResponse(file.getId(), file.getFilename(),
-                    file.getInitialCategory().getName(), file.getUploadedAt(), file.getUploadedBy().getUsername(),
-                    newCategory.getName(), file.getFilepath());
+            return new AudioFileResponse(
+                    file.getId(), file.getFilename(),
+                    file.getInitialCategory().getName(), file.getUploadedAt(),
+                    file.getUploadedBy().getUsername(), newCategory.getName(),
+                    file.getFilepath()
+            );
         } catch (OptimisticLockingFailureException ex) {
-            logger.error("This file was modified by another user. Please try again." + request);
+            logger.error("This file was modified by another user. Please try again. Request: " + request);
             throw new ConcurrentModificationException("This file was modified by another user. Please try again.");
         }
     }
@@ -132,10 +136,8 @@ public class ClassificationService {
         return classifications.map(classification -> new ClassificationResponse(
                 classification.getAudioFile().getId(),
                 classification.getAudioFile().getFilename(),
-                String.format("http://localhost:8080/admin/audio/files/%s", classification.getAudioFile().getFilename()),
+                String.format("%s/admin/audio/files/%s", appConfig.getFileServerUrl(), classification.getAudioFile().getFilename()),
                 classification.getNewCategory().getName(),
                 classification.getClassifiedAt()));
     }
 }
-
-//TODO file path, user lock properties

@@ -35,46 +35,6 @@ public class AudioFileController {
     private final Path fileStorageLocation = Paths.get("uploads");
     private final static Logger logger = LoggerFactory.getLogger(AudioFileController.class);
 
-    /**
-     * Serve an audio file by filename, accessible to both USER and ADMIN roles.
-     */
-    /*@GetMapping("/files/{filename:.+}")
-    public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
-        try {
-            AudioFile audioFile = audioFileService.getFileByFilename(filename);
-            if (audioFile == null) {
-                return ResponseEntity.notFound().build();
-            }
-
-            Path filePath = fileStorageLocation.resolve(audioFile.getFilepath()).normalize();
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (!resource.exists() || !resource.isReadable()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .header(HttpHeaders.CONTENT_TYPE, "text/plain")
-                        .body(null);
-            }
-
-            // Determine MIME type
-            String mimeType = Files.probeContentType(filePath);
-            if (mimeType == null) {
-                mimeType = "application/octet-stream"; // fallback to binary content
-            }
-
-            // Set content disposition to force download behavior
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(mimeType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
-                    .body(resource);
-
-        } catch (Exception e) {
-            logger.error("Error serving file '{}': {}", filename, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .header(HttpHeaders.CONTENT_TYPE, "text/plain")
-                    .body(null);
-        }
-    }*/
-
     @GetMapping("/files/{filename:.+}")
     public void serveFile(@PathVariable String filename, HttpServletResponse response) {
         try {

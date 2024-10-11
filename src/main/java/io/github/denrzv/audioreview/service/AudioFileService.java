@@ -93,7 +93,7 @@ public class AudioFileService {
                         file.getCurrentCategory().getName(),
                         file.getFilepath()
                 )
-        ).collect(Collectors.toList());
+        ).toList();
 
         Map<String, Object> response = new HashMap<>();
         response.put("data", files);
@@ -158,16 +158,28 @@ public class AudioFileService {
 
     @Transactional
     public AudioFileResponse updateFileProperties(Long id, AudioFileResponse updatedFile) {
-        AudioFile file = audioFileRepository.findById(id)
+        AudioFile file = audioFileRepository.findByIdWithLock(id)
                 .orElseThrow(() -> new RuntimeException("File not found"));
 
         file.setFilename(updatedFile.getFilename());
-        file.setCurrentCategory(new Category(updatedFile.getCurrentCategory()));
+
+        // Fetch category by name without adding it directly to avoid cascade issues
+        Category category = categoryRepository.findByName(updatedFile.getCurrentCategory())
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        file.setCurrentCategory(category);
+
         audioFileRepository.save(file);
 
-        return new AudioFileResponse(file.getId(), file.getFilename(), file.getInitialCategory().getName(),
-                file.getUploadedAt(), file.getUploadedBy().getUsername(),
-                file.getCurrentCategory().getName(), file.getFilepath());
+        return new AudioFileResponse(
+                file.getId(),
+                file.getFilename(),
+                file.getInitialCategory().getName(),
+                file.getUploadedAt(),
+                file.getUploadedBy().getUsername(),
+                file.getCurrentCategory().getName(),
+                file.getFilepath()
+        );
     }
 
     @Transactional

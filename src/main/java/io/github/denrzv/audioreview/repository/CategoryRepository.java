@@ -26,4 +26,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
      * @return true if exists, false otherwise
      */
     boolean existsByShortcut(String shortcut);
+
+    Optional<Category> findByName(String currentCategory);
 }

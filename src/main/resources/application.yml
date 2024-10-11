@@ -68,3 +68,8 @@ management:
       enabled: true
   server:
     port: 8080
+
+app:
+  file-server-url: ${FILE_SERVER_URL:http://localhost:8080}
+  user-lock-minutes: ${USER_LOCK_MINUTES:15}
+  allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:3001}
