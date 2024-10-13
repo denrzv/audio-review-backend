@@ -15,7 +15,6 @@ import io.github.denrzv.audioreview.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +23,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ConcurrentModificationException;
 import java.util.Optional;
@@ -61,8 +62,8 @@ public class ClassificationService {
             file.setLockedAt(LocalDateTime.now());
             audioFileRepository.save(file);
         }
-
-        String filePath = String.format("%s/admin/audio/files/%s", appConfig.getFileServerUrl(), file.getFilename());
+        String encodedFilename = URLEncoder.encode(file.getFilename(), StandardCharsets.UTF_8);
+        String filePath = String.format("%s/admin/audio/files/%s", appConfig.getFileServerUrl(), encodedFilename);
 
         return new AudioFileResponse(
                 file.getId(),
@@ -133,11 +134,17 @@ public class ClassificationService {
         Pageable pageable = PageRequest.of(page, pageSize);
         Page<Classification> classifications = classificationRepository.findByUserOrderByClassifiedAtDesc(user, pageable);
 
-        return classifications.map(classification -> new ClassificationResponse(
-                classification.getAudioFile().getId(),
-                classification.getAudioFile().getFilename(),
-                String.format("%s/admin/audio/files/%s", appConfig.getFileServerUrl(), classification.getAudioFile().getFilename()),
-                classification.getNewCategory().getName(),
-                classification.getClassifiedAt()));
+        return classifications.map(classification -> {
+            String encodedFilename = URLEncoder.encode(classification.getAudioFile().getFilename(), StandardCharsets.UTF_8);
+            String filePath = String.format("%s/admin/audio/files/%s", appConfig.getFileServerUrl(), encodedFilename);
+
+            return new ClassificationResponse(
+                    classification.getAudioFile().getId(),
+                    classification.getAudioFile().getFilename(),
+                    filePath,
+                    classification.getNewCategory().getName(),
+                    classification.getClassifiedAt()
+            );
+        });
     }
 }

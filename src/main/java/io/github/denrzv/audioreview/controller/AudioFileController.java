@@ -10,8 +10,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +18,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,12 +33,15 @@ public class AudioFileController {
 
     private final AudioFileService audioFileService;
     private final Path fileStorageLocation = Paths.get("uploads");
-    private final static Logger logger = LoggerFactory.getLogger(AudioFileController.class);
+    private static final Logger logger = LoggerFactory.getLogger(AudioFileController.class);
 
     @GetMapping("/files/{filename:.+}")
     public void serveFile(@PathVariable String filename, HttpServletResponse response) {
         try {
-            AudioFile audioFile = audioFileService.getFileByFilename(filename);
+            // Decode the filename to handle special characters
+            String decodedFilename = URLDecoder.decode(filename, StandardCharsets.UTF_8);
+
+            AudioFile audioFile = audioFileService.getFileByFilename(decodedFilename);
             if (audioFile == null) {
                 response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 return;
@@ -52,12 +55,10 @@ public class AudioFileController {
                 return;
             }
 
-            // Set MIME type and headers
             String mimeType = Files.probeContentType(filePath);
             response.setContentType(mimeType != null ? mimeType : "application/octet-stream");
-            response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"");
+            response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + decodedFilename + "\"");
 
-            // Write file to response stream
             try (InputStream inputStream = resource.getInputStream();
                  OutputStream outputStream = response.getOutputStream()) {
                 byte[] buffer = new byte[4096];
@@ -66,12 +67,11 @@ public class AudioFileController {
                     outputStream.write(buffer, 0, bytesRead);
                 }
             } catch (IOException e) {
-                // Handle client disconnects
                 if (e.getMessage().contains("Broken pipe")) {
                     response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                     return;
                 }
-                throw e;  // rethrow other IO exceptions
+                throw e;
             }
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);

@@ -103,7 +103,7 @@ public class AudioFileService {
     }
 
     private String extractCategoryFromFileName(String fileName) {
-        Pattern pattern = Pattern.compile("^(voice|silent|answering_machine)_.*", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile("^(Voice|Silent|AnsweringMachine)_.*", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(fileName.toLowerCase());
         if (matcher.find()) {
             return matcher.group(1).toLowerCase();
