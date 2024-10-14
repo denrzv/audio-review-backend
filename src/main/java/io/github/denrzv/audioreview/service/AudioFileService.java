@@ -202,4 +202,23 @@ public class AudioFileService {
         }
         audioFileRepository.saveAll(files);
     }
+
+    public List<AudioFileResponse> getAllFilesWithoutPagination(String filename) {
+        List<AudioFile> files;
+        if (filename != null && !filename.isEmpty()) {
+            files = audioFileRepository.findByFilenameContainingIgnoreCase(filename);
+        } else {
+            files = audioFileRepository.findAll();
+        }
+
+        return files.stream().map(file -> new AudioFileResponse(
+                file.getId(),
+                file.getFilename(),
+                file.getInitialCategory().getName(),
+                file.getUploadedAt(),
+                file.getUploadedBy().getUsername(),
+                file.getCurrentCategory().getName(),
+                file.getFilepath()
+        )).toList();
+    }
 }

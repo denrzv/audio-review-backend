@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -24,6 +25,7 @@ public interface AudioFileRepository extends JpaRepository<AudioFile, Long> {
     Optional<AudioFile> findByFilename(String filename);
 
     Page<AudioFile> findByFilenameContainingIgnoreCase(String filename, Pageable pageable);
+    List<AudioFile> findByFilenameContainingIgnoreCase(String filename);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @NonNull

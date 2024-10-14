@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -110,8 +111,19 @@ public class AudioFileController {
     public ResponseEntity<Map<String, Object>> getAllFiles(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String filename) {
-        Map<String, Object> response = audioFileService.getAllFiles(page, pageSize, filename);
+            @RequestParam(required = false) String filename,
+            @RequestParam(required = false) boolean noPagination) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        if (noPagination) {
+            List<AudioFileResponse> files = audioFileService.getAllFilesWithoutPagination(filename);
+            response.put("data", files);
+            response.put("total", files.size());
+        } else {
+            response = audioFileService.getAllFiles(page, pageSize, filename);
+        }
+
         return ResponseEntity.ok(response);
     }
 
