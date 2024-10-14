@@ -45,4 +45,6 @@ public interface CategoryService {
      * @param id the category ID
      */
     void deleteCategory(Long id);
+
+    String extractCategoryFromFileName(String fileName);
 }

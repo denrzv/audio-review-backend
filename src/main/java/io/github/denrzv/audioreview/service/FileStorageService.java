@@ -1,6 +1,5 @@
 package io.github.denrzv.audioreview.service;
 
-import io.github.denrzv.audioreview.dto.CategoryResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -13,7 +12,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -38,7 +36,7 @@ public class FileStorageService {
         String originalFileName = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
 
         try {
-            String category = extractCategoryFromFileName(originalFileName);
+            String category = categoryService.extractCategoryFromFileName(originalFileName);
             String dateFolder = LocalDate.now().toString();
             Path categoryDir = fileStorageLocation.resolve(category).resolve(dateFolder).normalize();
 
@@ -52,16 +50,5 @@ public class FileStorageService {
         } catch (IOException ex) {
             throw new RuntimeException("Could not store file " + originalFileName, ex);
         }
-    }
-
-    public String extractCategoryFromFileName(String fileName) {
-        List<String> categoryNames = categoryService.getAllCategories().stream()
-                .map(CategoryResponse::getName)
-                .toList();
-
-        return categoryNames.stream()
-                .filter(category -> fileName.toLowerCase().contains(category.toLowerCase()))
-                .findFirst()
-                .orElse("undefined");
     }
 }

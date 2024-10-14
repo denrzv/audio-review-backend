@@ -2,6 +2,8 @@ package io.github.denrzv.audioreview.repository;
 
 import io.github.denrzv.audioreview.model.Category;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -28,4 +30,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     boolean existsByShortcut(String shortcut);
 
     Optional<Category> findByName(String currentCategory);
+
+    @Query("SELECT c FROM Category c WHERE LOWER(REPLACE(c.name, ' ', '')) = LOWER(REPLACE(:name, ' ', ''))")
+    Optional<Category> findByNormalizedCategoryName(@Param("name") String name);
 }

@@ -1,7 +1,6 @@
 package io.github.denrzv.audioreview.service;
 
 import io.github.denrzv.audioreview.dto.AudioFileResponse;
-import io.github.denrzv.audioreview.dto.CategoryResponse;
 import io.github.denrzv.audioreview.model.AudioFile;
 import io.github.denrzv.audioreview.model.Category;
 import io.github.denrzv.audioreview.model.User;
@@ -43,7 +42,7 @@ public class AudioFileService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String categoryName = extractCategoryFromFileName(file.getOriginalFilename());
+        String categoryName = categoryService.extractCategoryFromFileName(file.getOriginalFilename());
 
         // Find initial category based on file naming convention
         Category initialCategory = categoryRepository.findByNameEqualsIgnoreCase(categoryName)
@@ -218,16 +217,5 @@ public class AudioFileService {
                 file.getCurrentCategory().getName(),
                 file.getFilepath()
         )).toList();
-    }
-
-    public String extractCategoryFromFileName(String fileName) {
-        List<String> categoryNames = categoryService.getAllCategories().stream()
-                .map(CategoryResponse::getName)
-                .toList();
-
-        return categoryNames.stream()
-                .filter(category -> fileName.toLowerCase().contains(category.toLowerCase()))
-                .findFirst()
-                .orElse("undefined");
     }
 }

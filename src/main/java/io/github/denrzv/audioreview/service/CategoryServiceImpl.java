@@ -8,6 +8,7 @@ import io.github.denrzv.audioreview.model.Category;
 import io.github.denrzv.audioreview.repository.AudioFileRepository;
 import io.github.denrzv.audioreview.repository.CategoryRepository;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -16,11 +17,11 @@ import java.util.List;
 
 @Service
 @AllArgsConstructor
+@Slf4j
 public class CategoryServiceImpl implements CategoryService {
     
     private CategoryRepository categoryRepository;
     private AudioFileRepository audioFileRepository;
-    private static final Logger logger = LoggerFactory.getLogger(CategoryServiceImpl.class);
 
 
     /**
@@ -86,7 +87,7 @@ public class CategoryServiceImpl implements CategoryService {
      */
     @Override
     public CategoryResponse updateCategory(Long id, CategoryRequest categoryRequest) {
-        logger.info("Creating category with name: {} and shortcut: {}", categoryRequest.getName(), categoryRequest.getShortcut());
+        log.info("Creating category with name: {} and shortcut: {}", categoryRequest.getName(), categoryRequest.getShortcut());
 
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category with ID " + id + " not found."));
@@ -145,5 +146,19 @@ public class CategoryServiceImpl implements CategoryService {
                 category.getName(),
                 category.getShortcut()
         );
+    }
+
+    public String extractCategoryFromFileName(String fileName) {
+        String normalizedFileName = fileName.toLowerCase().replaceAll("\\s+", "");
+
+        List<String> categoryNames = getAllCategories().stream()
+                .map(CategoryResponse::getName)
+                .map(name -> name.toLowerCase().replaceAll("\\s+", "")) // Remove spaces and convert to lowercase
+                .toList();
+
+        return categoryNames.stream()
+                .filter(normalizedFileName::contains) // Check if the file name contains the category
+                .findFirst()
+                .orElse("undefined");
     }
 }

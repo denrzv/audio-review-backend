@@ -82,7 +82,7 @@ public class ClassificationService {
                     .orElseThrow(() -> new RuntimeException("File not found"));
 
             // Fetch the category without saving it directly to avoid cascade issues
-            Category newCategory = categoryRepository.findByNameEqualsIgnoreCase(request.getCategory())
+            Category newCategory = categoryRepository.findByNormalizedCategoryName(request.getCategory())
                     .orElseThrow(() -> new RuntimeException("Category not found"));
 
             String username = SecurityContextHolder.getContext().getAuthentication().getName();
