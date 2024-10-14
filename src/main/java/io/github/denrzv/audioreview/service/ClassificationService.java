@@ -13,8 +13,7 @@ import io.github.denrzv.audioreview.repository.CategoryRepository;
 import io.github.denrzv.audioreview.repository.ClassificationRepository;
 import io.github.denrzv.audioreview.repository.UserRepository;
 import lombok.AllArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,6 +30,7 @@ import java.util.Optional;
 
 @Service
 @AllArgsConstructor
+@Slf4j
 public class ClassificationService {
 
     private AudioFileRepository audioFileRepository;
@@ -41,8 +41,6 @@ public class ClassificationService {
 
     private UserRepository userRepository;
     private AppConfig appConfig;
-    private static final Logger logger = LoggerFactory.getLogger(ClassificationService.class);
-
 
     @Transactional
     public AudioFileResponse getRandomUnclassifiedFile(Long userId) {
@@ -113,7 +111,7 @@ public class ClassificationService {
                     file.getFilepath()
             );
         } catch (OptimisticLockingFailureException ex) {
-            logger.error("This file was modified by another user. Please try again. Request: " + request);
+            log.error("This file was modified by another user. Please try again. Request: {0}", request);
             throw new ConcurrentModificationException("This file was modified by another user. Please try again.");
         }
     }

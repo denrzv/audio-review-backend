@@ -41,15 +41,6 @@ public interface AudioFileRepository extends JpaRepository<AudioFile, Long> {
             @Param("userId") Long userId,
             @Param("expirationTime") LocalDateTime expirationTime);
 
-//    @Query("SELECT f.id FROM AudioFile f " +
-//            "WHERE f.currentCategory.name = 'Unclassified' " +
-//            "AND ((f.lockedBy = :userId) " +
-//            "OR (f.lockedBy IS NULL OR f.lockedAt < :expirationTime)) " +
-//            "ORDER BY function('RANDOM') LIMIT 1")
-//    Optional<Long> findRandomUnclassifiedFileId(
-//            @Param("userId") Long userId,
-//            @Param("expirationTime") LocalDateTime expirationTime);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT f FROM AudioFile f WHERE f.id = :id")
     Optional<AudioFile> findByIdWithLock(@Param("id") Long id);

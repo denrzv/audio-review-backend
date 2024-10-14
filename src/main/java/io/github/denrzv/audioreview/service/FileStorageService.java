@@ -1,24 +1,31 @@
 package io.github.denrzv.audioreview.service;
 
+import io.github.denrzv.audioreview.dto.CategoryResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
+@Slf4j
 public class FileStorageService {
 
     private final Path fileStorageLocation;
+    private final CategoryService categoryService;
 
-    public FileStorageService(@Value("${file.upload-dir}") String uploadDir) {
+    public FileStorageService(@Value("${file.upload-dir}") String uploadDir, CategoryService categoryService) {
         this.fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
+        this.categoryService = categoryService;
 
         try {
             Files.createDirectories(this.fileStorageLocation);
@@ -47,13 +54,14 @@ public class FileStorageService {
         }
     }
 
+    public String extractCategoryFromFileName(String fileName) {
+        List<String> categoryNames = categoryService.getAllCategories().stream()
+                .map(CategoryResponse::getName)
+                .toList();
 
-    private String extractCategoryFromFileName(String fileName) {
-        Pattern pattern = Pattern.compile("^(voice|silent|answering_machine)_.*", Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(fileName.toLowerCase());
-        if (matcher.find()) {
-            return matcher.group(1).toLowerCase();
-        }
-        return "undefined";
+        return categoryNames.stream()
+                .filter(category -> fileName.toLowerCase().contains(category.toLowerCase()))
+                .findFirst()
+                .orElse("undefined");
     }
 }

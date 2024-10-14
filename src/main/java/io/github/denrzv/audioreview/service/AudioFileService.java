@@ -1,6 +1,7 @@
 package io.github.denrzv.audioreview.service;
 
 import io.github.denrzv.audioreview.dto.AudioFileResponse;
+import io.github.denrzv.audioreview.dto.CategoryResponse;
 import io.github.denrzv.audioreview.model.AudioFile;
 import io.github.denrzv.audioreview.model.Category;
 import io.github.denrzv.audioreview.model.User;
@@ -8,6 +9,7 @@ import io.github.denrzv.audioreview.repository.AudioFileRepository;
 import io.github.denrzv.audioreview.repository.CategoryRepository;
 import io.github.denrzv.audioreview.repository.UserRepository;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,19 +18,24 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
+@Slf4j
 public class AudioFileService {
 
     private final AudioFileRepository audioFileRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final CategoryService categoryService;
+    private static final String CATEGORY_NOT_FOUND = "Category not found";
+    private static final String FILE_NOT_FOUND = "File not found";
+    private static final String UNCLASSIFIED = "Unclassified";
 
     @Transactional
     public AudioFileResponse uploadFile(MultipartFile file) {
@@ -36,13 +43,13 @@ public class AudioFileService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String categoryName = extractCategoryFromFileName(Objects.requireNonNull(file.getOriginalFilename()));
+        String categoryName = extractCategoryFromFileName(file.getOriginalFilename());
 
         // Find initial category based on file naming convention
         Category initialCategory = categoryRepository.findByNameEqualsIgnoreCase(categoryName)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new RuntimeException(CATEGORY_NOT_FOUND));
 
-        Category unclassifiedCategory = categoryRepository.findByNameEqualsIgnoreCase("Unclassified")
+        Category unclassifiedCategory = categoryRepository.findByNameEqualsIgnoreCase(UNCLASSIFIED)
                 .orElseThrow(() -> new RuntimeException("Unclassified category not found"));
 
         String filePath = fileStorageService.storeFile(file);
@@ -102,15 +109,6 @@ public class AudioFileService {
         return response;
     }
 
-    private String extractCategoryFromFileName(String fileName) {
-        Pattern pattern = Pattern.compile("^(Voice|Silent|AnsweringMachine)_.*", Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(fileName.toLowerCase());
-        if (matcher.find()) {
-            return matcher.group(1).toLowerCase();
-        }
-        return "undefined";
-    }
-
     public Map<String, Object> getDashboardStats() {
         long totalFiles = audioFileRepository.count();
 
@@ -133,11 +131,11 @@ public class AudioFileService {
                 ));
 
         long reclassifiedCount = audioFileRepository.findAll().stream()
-                .filter(file -> !file.getCurrentCategory().getName().equals("Unclassified"))
+                .filter(file -> !file.getCurrentCategory().getName().equals(UNCLASSIFIED))
                 .count();
 
         long filesToClassifyCount = audioFileRepository.findAll().stream()
-                .filter(file -> file.getCurrentCategory().getName().equals("Unclassified"))
+                .filter(file -> file.getCurrentCategory().getName().equals(UNCLASSIFIED))
                 .count();
 
         return Map.of(
@@ -159,13 +157,13 @@ public class AudioFileService {
     @Transactional
     public AudioFileResponse updateFileProperties(Long id, AudioFileResponse updatedFile) {
         AudioFile file = audioFileRepository.findByIdWithLock(id)
-                .orElseThrow(() -> new RuntimeException("File not found"));
+                .orElseThrow(() -> new RuntimeException(FILE_NOT_FOUND));
 
         file.setFilename(updatedFile.getFilename());
 
         // Fetch category by name without adding it directly to avoid cascade issues
         Category category = categoryRepository.findByName(updatedFile.getCurrentCategory())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new RuntimeException(CATEGORY_NOT_FOUND));
 
         file.setCurrentCategory(category);
 
@@ -195,7 +193,7 @@ public class AudioFileService {
     @Transactional
     public void updateMultipleFiles(List<Long> fileIds, String currentCategoryName) {
         Category category = categoryRepository.findByNameEqualsIgnoreCase(currentCategoryName)
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new RuntimeException(CATEGORY_NOT_FOUND));
         List<AudioFile> files = audioFileRepository.findAllById(fileIds);
         for (AudioFile file : files) {
             file.setCurrentCategory(category);
@@ -220,5 +218,16 @@ public class AudioFileService {
                 file.getCurrentCategory().getName(),
                 file.getFilepath()
         )).toList();
+    }
+
+    public String extractCategoryFromFileName(String fileName) {
+        List<String> categoryNames = categoryService.getAllCategories().stream()
+                .map(CategoryResponse::getName)
+                .toList();
+
+        return categoryNames.stream()
+                .filter(category -> fileName.toLowerCase().contains(category.toLowerCase()))
+                .findFirst()
+                .orElse("undefined");
     }
 }

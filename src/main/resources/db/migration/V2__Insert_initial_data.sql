@@ -3,7 +3,7 @@
 INSERT INTO categories (name, shortcut) VALUES
                                             ('Silent', 'S'),
                                             ('Voice', 'V'),
-                                            ('Answering Machine', 'A'),
+                                            ('AnsweringMachine', 'A'),
                                             ('Undefined', 'U'),
                                             ('Unclassified', 'N')
 ON CONFLICT (name) DO NOTHING;
